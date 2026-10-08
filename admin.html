@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据管理后台 - 顺安达电梯维保管理系统</title>
+  <link rel="stylesheet" href="css/style.css?v=20260918-v40">
+  <link rel="stylesheet" href="css/inspection.css?v=20260918-v41">
+</head>
+<body>
+  <!-- 密码门禁 -->
+  <div id="loginGate" class="login-gate">
+    <div class="login-box">
+      <div class="login-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3498db" stroke-width="2">
+          <rect x="5" y="11" width="14" height="10" rx="2"/>
+          <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+        </svg>
+      </div>
+      <h2>顺安达电梯维保管理系统</h2>
+      <p class="login-hint">请输入管理密码</p>
+      <input type="password" id="adminPassword" class="login-input" placeholder="管理密码" autocomplete="off"
+             onkeydown="if(event.key==='Enter')checkAdminLogin()" />
+      <button class="btn btn-primary login-btn" onclick="checkAdminLogin()">进入</button>
+      <p id="loginError" class="login-error"></p>
+      <a href="index.html" class="login-back">&larr; 返回主页面</a>
+    </div>
+  </div>
+
+  <div class="app-header">
+    <h1>顺安达电梯维保管理系统</h1>
+    <div class="subtitle">设备数据增删改查 | 定位校准 | 批量管理</div>
+    <div style="margin-top:10px;display:flex;gap:10px;justify-content:center">
+      <a href="index.html" class="nav-link">&larr; 返回主页面</a>
+      <a href="#" class="nav-link" onclick="logoutAdmin();return false">退出登录</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- 加载中 -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>正在加载数据...</p>
+    </div>
+
+    <div id="adminContent" style="display:none">
+      <!-- 数据概览 -->
+      <div class="stats-row" style="margin-top:24px">
+        <div class="stat-card">
+          <div class="stat-value" id="statDevices">-</div>
+          <div class="stat-label">电梯总数</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-value" id="statDays">-</div>
+          <div class="stat-label">维保天数</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-value" id="statEvents">-</div>
+          <div class="stat-label">维保事件</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="statDistricts">-</div>
+          <div class="stat-label">覆盖区域</div>
+        </div>
+      </div>
+
+      <!-- Tab 导航 -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="list">设备列表</button>
+        <button class="tab-btn" data-tab="add">新增设备</button>
+        <button class="tab-btn" data-tab="batch">批量调整</button>
+        <button class="tab-btn" data-tab="inspection">年审计划</button>
+        <button class="tab-btn" data-tab="geo">定位校准</button>
+        <button class="tab-btn" data-tab="log">操作日志</button>
+      </div>
+
+      <!-- 设备列表 -->
+      <div class="tab-content active" id="tab-list">
+        <div class="admin-table-wrapper">
+          <div class="table-toolbar">
+            <input type="text" class="search-input" id="tableSearch" placeholder="搜索设备..." oninput="window._debouncedFilterTable ? _debouncedFilterTable() : filterTable()" style="max-width:300px" />
+            <select id="tableDistrictFilter" onchange="filterTable()" style="padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;">
+              <option value="">全部区域</option>
+            </select>
+            <span style="margin-left:auto;color:#95a5a6;font-size:14px" id="tableCount"></span>
+          </div>
+          <div class="table-body">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:50px">序号</th>
+                  <th>注册代码</th>
+                  <th>使用单位</th>
+                  <th style="width:80px">区域</th>
+                  <th>地址</th>
+                  <th style="width:110px">下次维保</th>
+                  <th style="width:110px">年审日期</th>
+                  <th style="width:100px">操作</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 新增/编辑设备 -->
+      <div class="tab-content" id="tab-add">
+        <div class="export-section">
+          <h3 id="formTitle">新增设备</h3>
+          <form id="deviceForm" class="admin-form">
+            <input type="hidden" id="formMode" value="add" />
+            <input type="hidden" id="editRegCode" value="" />
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>注册代码 *</label>
+                <input type="text" id="f_reg_code" required placeholder="如：31104403002011000056" />
+              </div>
+              <div class="form-group">
+                <label>使用单位 *</label>
+                <input type="text" id="f_unit_name" required placeholder="如：深圳市XX物业管理有限公司" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>地址</label>
+              <input type="text" id="f_address" placeholder="详细地址" />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>区域</label>
+                <select id="f_district">
+                  <option value="">请选择</option>
+                  <option value="龙华区">龙华区</option>
+                  <option value="宝安区">宝安区</option>
+                  <option value="龙岗区">龙岗区</option>
+                  <option value="福田区">福田区</option>
+                  <option value="南山区">南山区</option>
+                  <option value="罗湖区">罗湖区</option>
+                  <option value="光明区">光明区</option>
+                  <option value="坪山区">坪山区</option>
+                  <option value="盐田区">盐田区</option>
+                  <option value="大鹏新区">大鹏新区</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>街道</label>
+                <input type="text" id="f_street" placeholder="如：龙华区观澜街道" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>班组</label>
+                <input type="text" id="f_team" placeholder="如：观澜1组" />
+              </div>
+              <div class="form-group">
+                <label>维保周期（天）</label>
+                <input type="text" id="f_cycle" value="15" placeholder="15" />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>下次维保日期</label>
+                <input type="date" id="f_next_date" />
+              </div>
+              <div class="form-group">
+                <label>年审日期</label>
+                <input type="date" id="f_annual_inspection_date" placeholder="如有年审安排请填写" />
+              </div>
+              <div class="form-group">
+                <label>维保合同开始日期</label>
+                <input type="date" id="f_contract_start_date" />
+              </div>
+              <div class="form-group">
+                <label>维保合同结束日期</label>
+                <input type="date" id="f_contract_end_date" />
+              </div>
+              <div class="form-group">
+                <label>纬度（可选）</label>
+                <input type="text" id="f_lat" placeholder="如：22.755" />
+              </div>
+              <div class="form-group">
+                <label>经度（可选）</label>
+                <input type="text" id="f_lng" placeholder="如：114.065" />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="submitBtn">添加设备</button>
+              <button type="button" class="btn btn-danger" id="cancelBtn">取消</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 批量调整维保日期 -->
+      <div class="tab-content" id="tab-batch">
+        <div class="export-section">
+          <h3>批量调整维保日期</h3>
+          <p style="color:#7f8c8d;margin-bottom:16px;font-size:14px">
+            把指定区域、指定日期的设备批量改到新的维保日期。常用于临时调动维保计划。
+          </p>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>目标区域</label>
+              <select id="batchDistrict" onchange="onBatchDistrictChange()">
+                <option value="">全部区域</option>
+                <option value="龙华区">龙华区</option>
+                <option value="宝安区">宝安区</option>
+                <option value="龙岗区">龙岗区</option>
+                <option value="福田区">福田区</option>
+                <option value="南山区">南山区</option>
+                <option value="罗湖区">罗湖区</option>
+                <option value="光明区">光明区</option>
+                <option value="坪山区">坪山区</option>
+                <option value="盐田区">盐田区</option>
+                <option value="大鹏新区">大鹏新区</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>原维保日期（按维保日历当天排期自动勾选，留空则改所选范围全部）</label>
+              <input type="date" id="batchTargetDate" onchange="onBatchTargetDateChange()" />
+            </div>
+            <div class="form-group">
+              <label>新维保日期 *</label>
+              <input type="date" id="batchNewDate" required />
+            </div>
+          </div>
+
+          <div class="batch-device-list" id="batchDeviceList" style="display:none;margin:16px 0;max-height:260px;overflow-y:auto;padding:12px;background:#fff;border:1px solid #ddd;border-radius:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <label style="font-size:13px;color:#2c3e50;font-weight:600">
+                <input type="checkbox" id="batchSelectAll" onchange="toggleBatchSelectAll()" style="margin-right:6px" />
+                全选 / 取消全选
+              </label>
+              <span id="batchSelectCount" style="font-size:12px;color:#999">0 台</span>
+            </div>
+            <div id="batchDeviceCheckboxes" style="display:flex;flex-direction:column;gap:3px"></div>
+          </div>
+
+          <div class="batch-preview" id="batchPreview" style="margin:16px 0;padding:12px;background:#f8f9fa;border-radius:8px;font-size:14px;color:#666">
+            请选择条件后点击"预览影响范围"
+          </div>
+
+          <div class="export-buttons">
+            <button class="btn btn-primary" onclick="previewBatchUpdate()">预览影响范围</button>
+            <button class="btn btn-success" onclick="applyBatchUpdate()">确认批量修改</button>
+            <button class="btn btn-warning" onclick="updateAllOverdue()">一键推进过期日期（按15天周期自动推算）</button>
+          </div>
+        </div>
+
+        <div class="export-section" style="margin-top:24px">
+          <h3>批量修改年审日期</h3>
+          <p style="color:#7f8c8d;margin-bottom:16px;font-size:14px">
+            搜索不同使用单位可以<strong>累积勾选</strong>，之前勾的不会丢失。全部勾好后再统一修改年审日期。
+          </p>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label>搜索设备（名称/注册代码/区域）</label>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="aiSearch" class="search-input" placeholder="输入关键词搜索..." oninput="window._debouncedFilterAI ? _debouncedFilterAI() : filterAIInspectionTable()" style="max-width:100%;flex:1" />
+                <button class="btn btn-danger btn-sm" onclick="clearAIInspectionSelection()" style="white-space:nowrap;padding:8px 14px">清除全部勾选</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>新年审日期 *</label>
+              <input type="date" id="aiNewDate" />
+            </div>
+          </div>
+
+          <div class="batch-device-list" id="aiDeviceList" style="display:none;margin:16px 0;max-height:280px;overflow-y:auto;padding:12px;background:#fff;border:1px solid #ddd;border-radius:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <label style="font-size:13px;color:#2c3e50;font-weight:600">
+                <input type="checkbox" id="aiSelectAll" onchange="toggleAIInspectionSelectAll()" style="margin-right:6px" />
+                全选 / 取消全选
+              </label>
+              <span id="aiSelectCount" style="font-size:12px;color:#999">0 台</span>
+            </div>
+            <div id="aiCheckboxList" style="display:flex;flex-direction:column;gap:3px"></div>
+          </div>
+
+          <div class="batch-preview" id="aiPreview" style="margin:16px 0;padding:12px;background:#f8f9fa;border-radius:8px;font-size:14px;color:#666">
+            请输入搜索关键词筛选设备，勾选后点击"预览"。
+          </div>
+
+          <div class="export-buttons">
+            <button class="btn btn-primary" onclick="previewAIInspectionUpdate()">预览影响范围</button>
+            <button class="btn btn-success" onclick="applyAIInspectionUpdate()">确认修改年审日期</button>
+          </div>
+        </div>
+
+        <div class="export-section" style="margin-top:24px">
+          <h3>数据同步</h3>
+          <p style="color:#7f8c8d;margin-bottom:16px;font-size:14px">
+            如果电脑端修改了数据，手机端刷新还是没更新，请点击"强制从云端同步"覆盖本地缓存。
+          </p>
+          <div class="export-buttons">
+            <button class="btn btn-warning" id="forceSyncBtn">强制从云端同步</button>
+            <button class="btn btn-danger" id="clearCacheBtn">清除本地缓存</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 年审计划 -->
+      <div class="tab-content" id="tab-inspection">
+        <div class="export-section">
+          <h3>年审计划</h3>
+          <p style="color:#7f8c8d;margin-top:4px;font-size:14px">参考年审日期不会显示在维保日历或设备列表。确认建议或手动改期后，才会成为正式年审计划并显示。</p>
+          <div class="export-buttons" style="margin:10px 0 0">
+            <button class="btn btn-primary" onclick="openShareInspection()">📤 生成年审安排表（发给同事）</button>
+          </div>
+        </div>
+        <div id="inspectionPlanContainer"></div>
+      </div>
+
+      <!-- 定位校准 -->
+      <div class="tab-content" id="tab-geo">
+        <div class="geo-section">
+          <h3 style="margin-bottom:12px">电梯定位校准</h3>
+          <p style="color:#7f8c8d;margin-bottom:16px;font-size:14px">
+            从左侧列表选择设备，在右侧地图上点击调整位置，或手动输入经纬度。校准后的坐标将用于一键导航。
+          </p>
+          <div class="geo-layout">
+            <div class="geo-list-panel">
+              <div class="table-toolbar">
+                <input type="text" class="search-input" id="geoSearch" placeholder="搜索设备..." oninput="window._debouncedFilterGeo ? _debouncedFilterGeo() : filterGeoTable()" style="max-width:280px" />
+                <span style="margin-left:auto;color:#95a5a6;font-size:14px" id="geoCount"></span>
+              </div>
+              <div class="geo-device-list" id="geoDeviceList"></div>
+            </div>
+            <div class="geo-map-panel" id="geoMapPanel">
+              <div class="geo-empty">
+                <p style="color:#999;text-align:center;padding:40px 0">&#8592; 请从左侧选择设备进行定位校准</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作日志 -->
+      <div class="tab-content" id="tab-log">
+        <div class="export-section">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3 style="margin-bottom:0">操作日志</h3>
+            <button class="btn btn-danger btn-sm" onclick="clearOperationLog()">清空日志</button>
+          </div>
+          <p style="color:#7f8c8d;font-size:14px;margin-top:4px">记录设备新增、修改、删除、维保完成、批量调整等操作（最多200条）。</p>
+        </div>
+        <div id="logTableContainer" style="background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,0.08);overflow:hidden">
+          <div style="overflow-x:auto;padding:16px 20px">
+            <table class="data-table" id="logTable">
+              <thead>
+                <tr>
+                  <th style="width:170px">时间</th>
+                  <th style="width:90px">操作类型</th>
+                  <th>注册代码</th>
+                  <th>详情</th>
+                </tr>
+              </thead>
+              <tbody id="logTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 年审计划详情弹窗 -->
+  <div class="modal-overlay" id="adminInspectionOverlay" onclick="if(event.target===this)closeInspectionDetail()">
+    <div class="modal-box inspection-detail-modal">
+      <div class="modal-header">
+        <h3 id="adminInspectionTitle">年审计划详情</h3>
+        <button class="modal-close" onclick="closeInspectionDetail()">&times;</button>
+      </div>
+      <div class="modal-body" id="adminInspectionBody"></div>
+    </div>
+  </div>
+
+  <!-- 年审安排分享表弹窗 -->
+  <div class="modal-overlay" id="shareInspectionOverlay" onclick="if(event.target===this)closeShareInspection()">
+    <div class="modal-box share-inspection-modal">
+      <div class="modal-header">
+        <h3>年审安排表（预览）</h3>
+        <button class="modal-close" onclick="closeShareInspection()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="shareInspectionCard" class="share-card"></div>
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary" onclick="downloadShareImage()">保存为图片 (PNG)</button>
+        <button class="btn btn-success" onclick="printShareCard()">打印 / 存为PDF</button>
+        <button class="btn btn-danger" onclick="closeShareInspection()">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/data.js?v=20260918-v40"></script>
+  <script src="js/inspection.js?v=20260918-v41"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="js/admin.js?v=20260918-v41"></script>
+</body>
+</html>

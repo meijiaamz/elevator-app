@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>顺安达电梯维保管理系统</title>
+  <link rel="stylesheet" href="css/style.css?v=20260918-v40">
+  <link rel="stylesheet" href="css/inspection.css?v=20260918-v40">
+  <link rel="stylesheet" href="lib/leaflet.css">
+</head>
+<body>
+  <div class="app-header">
+    <h1>顺安达电梯维保管理系统</h1>
+    <div class="subtitle">2026年1月-12月 | 15天维保周期 | 深圳地区</div>
+  </div>
+  <a href="admin.html" class="admin-fab" title="数据管理后台">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 3h18v4H3z M3 10h18v4H3z M3 17h18v4H3z"/>
+    </svg>
+    <span>数据管理</span>
+  </a>
+
+  <div class="container">
+    <!-- 加载中 -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>正在加载维保数据...</p>
+    </div>
+
+    <!-- 主内容 -->
+    <div id="appContent" style="display:none">
+      <!-- 首页统计面板 -->
+      <div id="homeStats"></div>
+      <!-- 合同续约提醒：仅显示已到期及30天内到期合同 -->
+      <div id="contractRenewalAlert"></div>
+      <!-- Tab 导航 -->
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="calendar">月度概览</button>
+        <button class="tab-btn" data-tab="detail">维保明细</button>
+        <button class="tab-btn" data-tab="map">地图分布</button>
+        <button class="tab-btn" data-tab="route">路线规划</button>
+      </div>
+
+      <!-- 月度概览 -->
+      <div class="tab-content active" id="tab-calendar">
+        <div class="calendar-section">
+          <div class="calendar-header">
+            <h2>维保日历概览</h2>
+            <p>点击日期查看当日维保电梯明细</p>
+            <div class="month-tabs">
+              <div class="month-tab" data-month="1" onclick="renderCalendar(1)">1月</div>
+              <div class="month-tab" data-month="2" onclick="renderCalendar(2)">2月</div>
+              <div class="month-tab" data-month="3" onclick="renderCalendar(3)">3月</div>
+              <div class="month-tab" data-month="4" onclick="renderCalendar(4)">4月</div>
+              <div class="month-tab" data-month="5" onclick="renderCalendar(5)">5月</div>
+              <div class="month-tab" data-month="6" onclick="renderCalendar(6)">6月</div>
+              <div class="month-tab" data-month="7" onclick="renderCalendar(7)">7月</div>
+              <div class="month-tab" data-month="8" onclick="renderCalendar(8)">8月</div>
+              <div class="month-tab" data-month="9" onclick="renderCalendar(9)">9月</div>
+              <div class="month-tab" data-month="10" onclick="renderCalendar(10)">10月</div>
+              <div class="month-tab" data-month="11" onclick="renderCalendar(11)">11月</div>
+              <div class="month-tab" data-month="12" onclick="renderCalendar(12)">12月</div>
+            </div>
+          </div>
+          <div id="calendarGrid" style="padding: 0 24px 24px;"></div>
+        </div>
+      </div>
+
+      <!-- 维保明细 -->
+      <div class="tab-content" id="tab-detail"></div>
+
+      <!-- 地图分布 -->
+      <div class="tab-content" id="tab-map">
+        <div id="mapContainer"></div>
+      </div>
+
+      <!-- 路线规划 -->
+      <div class="tab-content" id="tab-route"></div>
+    </div>
+  </div>
+
+  <!-- 详情弹窗 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle">维保详情</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- 定位校准弹窗 -->
+  <div class="modal-overlay" id="locateOverlay">
+    <div class="modal-box modal-locate">
+      <div class="modal-header">
+        <h3 id="locateTitle">定位校准</h3>
+        <button class="modal-close" onclick="closeLocateModal()">&times;</button>
+      </div>
+      <div class="modal-body" id="locateBody"></div>
+    </div>
+  </div>
+
+  <!-- Toast 提示 -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/data.js?v=20260918-v40"></script>
+  <script src="lib/leaflet.js"></script>
+  <script src="js/calendar.js?v=20260918-v40"></script>
+  <script src="js/detail.js?v=20260918-v40"></script>
+  <script src="js/map.js?v=20260918-v40"></script>
+  <script src="js/router.js?v=20260918-v40"></script>
+  <script src="js/app.js?v=20260918-v40"></script>
+</body>
+</html>
