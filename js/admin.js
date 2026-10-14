@@ -4,7 +4,7 @@
  */
 
 // ===== 密码门禁 =====
-// 管理密码: shunanda2026
+// 管理密码: 2026
 let _loginAttempts = parseInt(sessionStorage.getItem('admin_attempts') || '0');
 let _lockUntil = parseInt(sessionStorage.getItem('admin_lock') || '0');
 
@@ -19,8 +19,8 @@ function checkAdminLogin() {
   const input = document.getElementById('adminPassword').value;
   const errorEl = document.getElementById('loginError');
 
-  // 简单哈希验证：密码用 SHA-256（浏览器 Web Crypto API）比对
-  if (input === 'shunanda2026') {
+  // 密码比对（明文）
+  if (input === '2026') {
     _loginAttempts = 0;
     sessionStorage.removeItem('admin_attempts');
     sessionStorage.removeItem('admin_lock');
