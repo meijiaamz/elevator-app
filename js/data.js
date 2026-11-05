@@ -203,13 +203,44 @@ const DataManager = {
     }
   },
 
+  /** 云端载荷打包：键名抽成一份 keys 表、设备变成行数组、行尾空值裁剪。
+   *  177 台实测 99.7KB → 61KB，剩余空间够再加约 60 台（jsonbin 免费 100KB/UTF-8 字节）。
+   *  旧格式（无 packed 标记）由 _unpackRecord 原样返回，兼容老数据，无需刷 DATA_VERSION。 */
+  _packRecord() {
+    const keys = [];
+    const seen = {};
+    this.devices.forEach(d => {
+      Object.keys(d).forEach(k => { if (!seen[k]) { seen[k] = 1; keys.push(k); } });
+    });
+    const rows = this.devices.map(d => {
+      const row = keys.map(k => (d[k] === undefined ? null : d[k]));
+      while (row.length && (row[row.length - 1] === null || row[row.length - 1] === '')) row.pop();
+      return row;
+    });
+    return { version: this.DATA_VERSION, syncedAt: new Date().toISOString(), packed: 1, keys: keys, rows: rows };
+  },
+
+  /** 解包云端记录：packed=1 → 还原 {version, devices, syncedAt}；旧格式原样返回 */
+  _unpackRecord(rec) {
+    if (!rec || rec.packed !== 1 || !Array.isArray(rec.keys) || !Array.isArray(rec.rows)) return rec;
+    const keys = rec.keys;
+    const devices = rec.rows.map(row => {
+      const d = {};
+      for (let i = 0; i < keys.length && i < row.length; i++) {
+        if (row[i] !== null && row[i] !== undefined) d[keys[i]] = row[i];
+      }
+      return d;
+    });
+    return { version: rec.version, devices: devices, syncedAt: rec.syncedAt };
+  },
+
   /** 从云端读取数据（公开 bin，无需 Key；带时间戳绕过缓存） */
   async cloudLoad() {
     const url = 'https://api.jsonbin.io/v3/b/' + this.CLOUD_BIN_ID + '/latest?t=' + Date.now();
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('云端读取失败: ' + resp.status);
     const data = await resp.json();
-    return data.record || null;
+    return this._unpackRecord(data.record || null);
   },
 
   /** 写入数据到云端（需 _cloudKey，仅后台管理页调用；最多重试3次）
@@ -252,12 +283,9 @@ const DataManager = {
       return false;
     }
 
-    const syncedAt = new Date().toISOString();
-    const payload = JSON.stringify({
-      version: this.DATA_VERSION,
-      devices: this.devices,
-      syncedAt: syncedAt
-    });
+    const packed = this._packRecord();
+    const syncedAt = packed.syncedAt;
+    const payload = JSON.stringify(packed);
     // 提前发现超限，给出明确提示。
     // 注意：jsonbin 免费版按 UTF-8 字节计费（中文每字 3 字节），不能用 payload.length（字符数）判断！
     var payloadBytes = new TextEncoder().encode(payload).length;
