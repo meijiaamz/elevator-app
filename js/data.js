@@ -4,6 +4,10 @@
  */
 const DataManager = {
   DATA_VERSION: '2026-09-18-v40',
+  // 维保历史（maint_history）只保留最近几个月：它仅用于在日历上补标“已完成”的额外日期
+  // （设备日期被手动改过时，旧日期仍需留在原月份），过去月份无追溯价值，且会持续增长撑爆云端 100KB。
+  // 2 = 本月 + 上月；改成 1 = 只留本月。
+  MAINT_HISTORY_KEEP_MONTHS: 2,
   // 云端同步配置（jsonbin.io 公开读取，无需Key；写入需后台设置 _cloudKey）
   CLOUD_BIN_ID: '6a6d4c4ef5f4af5e29dc5981',
   _cloudKey: null,      // 后台管理页设置此值后，save() 自动同步到云端
@@ -207,6 +211,7 @@ const DataManager = {
    *  177 台实测 99.7KB → 61KB，剩余空间够再加约 60 台（jsonbin 免费 100KB/UTF-8 字节）。
    *  旧格式（无 packed 标记）由 _unpackRecord 原样返回，兼容老数据，无需刷 DATA_VERSION。 */
   _packRecord() {
+    this._pruneMaintHistory();   // 双保险：确保上报云端的数据里不含过期历史
     const keys = [];
     const seen = {};
     this.devices.forEach(d => {
@@ -531,7 +536,30 @@ const DataManager = {
    * 过去日期（< 今天）标记 historical 灰显保留在原月份，今天及以后为待办计划。
    * 不再把过去记录推进到当月，历史月份始终完整保留。
    */
+  /** 裁剪过期的维保历史，返回被删除的条数。
+   *  只保留“本月 + 前 N-1 个月”的 maint_history 日期：
+   *  正常的 15 天周期由 buildDevicePlan 从 next_date 反推生成，不依赖此字段，
+   *  所以删掉旧月份不影响日历上常规的维保安排，只是少了那些“手动改期后补标”的额外日期。 */
+  _pruneMaintHistory() {
+    const keep = this.MAINT_HISTORY_KEEP_MONTHS || 2;
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth() - (keep - 1), 1);
+    const cutoffStr = cutoff.getFullYear() + '-' +
+      String(cutoff.getMonth() + 1).padStart(2, '0') + '-01';
+    let removed = 0;
+    (this.devices || []).forEach(d => {
+      if (!Array.isArray(d.maint_history) || d.maint_history.length === 0) return;
+      const kept = d.maint_history.filter(x => String(x) >= cutoffStr);
+      removed += d.maint_history.length - kept.length;
+      d.maint_history = kept;
+    });
+    if (removed > 0) console.log('已裁剪过期维保历史 ' + removed + ' 条（保留 ' + cutoffStr + ' 起）');
+    return removed;
+  },
+
   regenerateSchedule() {
+    // 每次重算前先裁掉过期维保历史，避免它无限增长把云端 100KB 配额占满
+    this._pruneMaintHistory();
     const schedule = {};
     const y = this.currentYear();
     const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
