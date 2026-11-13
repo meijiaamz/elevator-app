@@ -6,6 +6,7 @@
   <title>数据管理后台 - 顺安达电梯维保管理系统</title>
   <link rel="stylesheet" href="css/style.css?v=20260918-v40">
   <link rel="stylesheet" href="css/inspection.css?v=20260918-v41">
+  <link rel="stylesheet" href="css/fault.css?v=20261113-v45">
 </head>
 <body>
   <!-- 密码门禁 -->
@@ -70,6 +71,7 @@
         <button class="tab-btn" data-tab="add">新增设备</button>
         <button class="tab-btn" data-tab="batch">批量调整</button>
         <button class="tab-btn" data-tab="inspection">年审计划</button>
+        <button class="tab-btn" data-tab="fault">故障报修</button>
         <button class="tab-btn" data-tab="geo">定位校准</button>
         <button class="tab-btn" data-tab="log">操作日志</button>
       </div>
@@ -319,6 +321,11 @@
         <div id="inspectionPlanContainer"></div>
       </div>
 
+      <!-- 故障报修 -->
+      <div class="tab-content" id="tab-fault">
+        <div id="faultContent"></div>
+      </div>
+
       <!-- 定位校准 -->
       <div class="tab-content" id="tab-geo">
         <div class="geo-section">
@@ -401,11 +408,63 @@
     </div>
   </div>
 
+  <!-- 故障报修表单弹窗 -->
+  <div class="modal-overlay" id="faultModal" onclick="if(event.target===this)closeFaultModal()">
+    <div class="modal-box" style="max-width:560px">
+      <div class="modal-header">
+        <h3 id="faultModalTitle">登记故障报修</h3>
+        <button class="modal-close" onclick="closeFaultModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="fault-form-row">
+          <label>报修设备 <span style="color:#e74c3c">*</span></label>
+          <input type="text" id="faultDeviceInput" list="faultDeviceList" placeholder="输入单位名或注册代码搜索" autocomplete="off" />
+          <datalist id="faultDeviceList"></datalist>
+          <div class="fault-form-tip">输入几个字会出现候选，点选即可</div>
+        </div>
+        <div class="fault-form-cols">
+          <div class="fault-form-row">
+            <label>报修日期</label>
+            <input type="date" id="faultDate" />
+          </div>
+          <div class="fault-form-row">
+            <label>故障类型</label>
+            <select id="faultType"></select>
+          </div>
+        </div>
+        <div class="fault-form-cols">
+          <div class="fault-form-row">
+            <label>处理师傅</label>
+            <input type="text" id="faultHandler" list="faultHandlerList" placeholder="填写姓名" autocomplete="off" />
+            <datalist id="faultHandlerList"></datalist>
+          </div>
+          <div class="fault-form-row">
+            <label>状态</label>
+            <select id="faultStatus">
+              <option value="0">待处理</option>
+              <option value="1">已处理</option>
+            </select>
+          </div>
+        </div>
+        <div class="fault-form-row">
+          <label>故障描述 / 处理情况</label>
+          <textarea id="faultNote" placeholder="例：12楼关门后不运行，门刀碰门球，调整后正常"></textarea>
+        </div>
+        <div id="faultFormError" style="color:#e74c3c;font-size:13px;min-height:18px"></div>
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary" onclick="submitFaultForm()">保存</button>
+        <button class="btn btn-danger" onclick="closeFaultModal()">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="js/data.js?v=20261105-v44"></script>
+  <script src="js/fault.js?v=20261113-v45"></script>
   <script src="js/inspection.js?v=20260918-v41"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/admin.js?v=20261014-v42"></script>
+  <script src="js/admin.js?v=20261113-v45"></script>
 </body>
 </html>

@@ -1,0 +1,69 @@
+/* ===== 故障报修模块 ===== */
+.fault-head {
+  background: #fff; border-radius: 12px; padding: 18px 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 16px;
+  display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.fault-head h3 { margin: 0; font-size: 18px; color: #2c3e50; }
+.fault-head p { margin: 4px 0 0; color: #7f8c8d; font-size: 13px; }
+
+.fault-stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+.fault-stat { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); border-left: 4px solid #3498db; }
+.fault-stat.warn { border-left-color: #e67e22; }
+.fault-stat.ok { border-left-color: #27ae60; }
+.fault-stat.gray { border-left-color: #95a5a6; }
+.fault-stat .num { font-size: 24px; font-weight: 700; color: #2c3e50; line-height: 1.2; }
+.fault-stat .lbl { font-size: 12px; color: #7f8c8d; margin-top: 2px; }
+
+.fault-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; margin-bottom: 16px; }
+.fault-card { background: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.fault-card h4 { margin: 0 0 12px; font-size: 15px; color: #2c3e50; display: flex; justify-content: space-between; align-items: center; }
+.fault-card h4 span { font-size: 12px; color: #95a5a6; font-weight: 400; }
+
+.fbar { display: grid; grid-template-columns: 92px 1fr 46px; align-items: center; gap: 10px; margin-bottom: 9px; font-size: 13px; color: #34495e; }
+.fbar .track { background: #eef2f5; border-radius: 6px; height: 10px; overflow: hidden; }
+.fbar .fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg,#5dade2,#3498db); }
+.fbar .val { text-align: right; color: #5d6d7e; font-variant-numeric: tabular-nums; }
+.fbar.top .fill { background: linear-gradient(90deg,#f0a04b,#e67e22); }
+
+.fault-empty { color: #95a5a6; font-size: 13px; padding: 18px 0; text-align: center; }
+
+.fault-toolbar { background: #fff; border-radius: 12px 12px 0 0; padding: 14px 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.fault-toolbar select, .fault-toolbar input { height: 34px; border: 1px solid #dfe6e9; border-radius: 8px; padding: 0 10px; font-size: 13px; background: #fff; color: #2c3e50; }
+.fault-toolbar input { flex: 1; min-width: 160px; }
+.fault-table-wrap { background: #fff; border-radius: 0 0 12px 12px; overflow-x: auto; padding: 0 0 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+.fault-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fault-table th { text-align: left; padding: 10px 14px; background: #f7f9fa; color: #5d6d7e; font-weight: 600; white-space: nowrap; border-bottom: 1px solid #eceff1; }
+.fault-table td { padding: 10px 14px; border-bottom: 1px solid #f2f4f5; color: #34495e; vertical-align: top; }
+.fault-table tr:last-child td { border-bottom: none; }
+.fault-table tr:hover td { background: #fafcfe; }
+.fault-table .note-cell { max-width: 320px; color: #5d6d7e; }
+.fault-table .code { font-family: Menlo, Consolas, monospace; font-size: 12px; color: #7f8c8d; }
+
+.ftag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #eaf4fc; color: #2471a3; white-space: nowrap; }
+.ftag.pending { background: #fdf1e3; color: #b9770e; }
+.ftag.done { background: #e9f7ef; color: #1e8449; }
+
+.fault-actions { display: flex; gap: 6px; white-space: nowrap; }
+.link-btn { background: none; border: none; color: #3498db; cursor: pointer; font-size: 13px; padding: 0; }
+.link-btn.danger { color: #e74c3c; }
+.link-btn:hover { text-decoration: underline; }
+
+.fault-form-row { margin-bottom: 14px; }
+.fault-form-row label { display: block; font-size: 13px; color: #5d6d7e; margin-bottom: 5px; }
+.fault-form-row input, .fault-form-row select, .fault-form-row textarea {
+  width: 100%; box-sizing: border-box; border: 1px solid #dfe6e9; border-radius: 8px;
+  padding: 9px 11px; font-size: 14px; font-family: inherit; color: #2c3e50; background: #fff;
+}
+.fault-form-row textarea { min-height: 76px; resize: vertical; }
+.fault-form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fault-form-tip { font-size: 12px; color: #95a5a6; margin-top: 4px; }
+
+@media (max-width: 768px) {
+  .fault-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .fault-grid { grid-template-columns: 1fr; }
+  .fault-form-cols { grid-template-columns: 1fr; }
+  .fault-head { padding: 14px; }
+  .fault-table th, .fault-table td { padding: 8px 10px; }
+  .fault-table .note-cell { max-width: 160px; }
+}

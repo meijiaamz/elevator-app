@@ -97,6 +97,12 @@ async function initAdmin() {
       renderDeviceTable();
     };
     await DataManager.load();
+    // 故障报修记录（独立云端 bin，失败不影响设备管理主流程）
+    try {
+      if (typeof FaultManager !== 'undefined') await FaultManager.load();
+    } catch (e) {
+      console.warn('故障记录加载失败:', e.message);
+    }
     // 保留历史记录，同时自动把仍在合同有效期内的过期设备推进到下一次正确日期。
     var advancedCount = DataManager.autoAdvanceOverdue();
     if (advancedCount > 0) {
@@ -162,6 +168,7 @@ function setupAdminTabs() {
       document.getElementById('tab-' + tab).classList.add('active');
       if (tab === 'log') renderLogTable();
       if (tab === 'inspection') renderInspectionPlan();
+      if (tab === 'fault' && typeof renderFaultTab === 'function') renderFaultTab();
     });
   });
 }
