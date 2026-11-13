@@ -1273,3 +1273,58 @@ a:hover { text-decoration: underline; }
   .geo-map-wrapper .svg-map-container { min-height: 300px; }
   .form-row { gap: 12px; }
 }
+
+/* ===== 待排期提醒（已备案但未安排维保计划的设备） ===== */
+.pending-banner {
+  display: none;
+  margin-top: 16px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  background: #fff8e8;
+  border: 1px solid #f3c877;
+  border-left: 5px solid #e67e22;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.pending-banner.show { display: flex; }
+.pending-banner .pb-icon { font-size: 22px; line-height: 1; }
+.pending-banner .pb-text { flex: 1; min-width: 210px; color: #8a5a00; font-size: 14px; line-height: 1.6; }
+.pending-banner .pb-text strong { color: #c0392b; font-size: 17px; margin: 0 2px; }
+.pending-banner .btn { white-space: nowrap; }
+
+.pending-modal { max-width: 940px; width: 94vw; }
+.pending-toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px 14px; background: #f5fafe; border: 1px solid #dceaf5;
+  border-radius: 8px; margin-bottom: 12px;
+}
+.pending-toolbar label { font-size: 13px; color: #54697c; display: flex; align-items: center; gap: 6px; }
+.pending-toolbar input[type="date"] {
+  padding: 8px 10px; border: 2px solid #e0e0e0; border-radius: 8px;
+  font-size: 14px; outline: none; font-family: inherit;
+}
+.pending-toolbar input[type="date"]:focus { border-color: #3498db; }
+.pending-table-wrap {
+  max-height: 50vh; overflow: auto; border: 1px solid #e8edf2; border-radius: 8px;
+}
+.pending-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pending-table th {
+  position: sticky; top: 0; z-index: 1; background: #f2f8fc; color: #54697c;
+  font-weight: 600; padding: 10px 8px; text-align: left;
+  border-bottom: 1px solid #e2e9ef; white-space: nowrap;
+}
+.pending-table td { padding: 9px 8px; border-bottom: 1px solid #f0f3f6; color: #2c3e50; }
+.pending-table tbody tr:hover td { background: #fafcfe; }
+.pending-table .col-chk { width: 36px; text-align: center; }
+.pending-table input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+.pending-table .tag-none { color: #e67e22; font-weight: 600; }
+.pending-empty { text-align: center; color: #27ae60; padding: 34px 16px; font-size: 15px; }
+.pending-tip { font-size: 12px; color: #8b9aa8; margin-top: 10px; line-height: 1.7; }
+@media (max-width: 767px) {
+  .pending-banner { padding: 12px 14px; }
+  .pending-banner .pb-text { font-size: 13px; }
+  .pending-modal { width: 96vw; }
+  .pending-table { font-size: 12px; }
+  .pending-table th, .pending-table td { padding: 8px 6px; }
+}
