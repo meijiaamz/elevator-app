@@ -153,6 +153,8 @@ function renderStats() {
   document.getElementById('statDays').textContent = totalDays;
   document.getElementById('statEvents').textContent = totalEvents;
   document.getElementById('statDistricts').textContent = districts;
+  // 顺带刷新"已备案但未排期"提醒
+  if (typeof renderPendingBanner === 'function') renderPendingBanner();
 }
 
 // showToast 和 navigateToDevice 已定义在 data.js 中，全局可用
@@ -999,3 +1001,140 @@ document.addEventListener('visibilitychange', async () => {
     }
   } catch (e) { /* 网络不可用时忽略 */ }
 });
+
+// ===== 待排期提醒：已备案/录入但还没安排维保计划的设备 =====
+// 这类设备的 next_date 为空，不会进入维保日历 → 就是"忘记安排维保"导致漏维保的根因。
+function _escPending(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+/** 合同未结束、但「下次维保日期」为空的设备 */
+function getPendingScheduleDevices() {
+  var today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return DataManager.devices.filter(function (d) {
+    if (!d || !d.reg_code) return false;
+    if (d.next_date) return false;
+    if (d.contract_end_date) {
+      var end = parseLocalDate(d.contract_end_date);
+      if (!isNaN(end.getTime()) && end < today) return false; // 合同已结束，属正常不排期
+    }
+    return true;
+  }).sort(function (a, b) {
+    var ca = a.contract_start_date || '9999-12-31';
+    var cb = b.contract_start_date || '9999-12-31';
+    return ca === cb ? 0 : (ca < cb ? -1 : 1);
+  });
+}
+
+function renderPendingBanner() {
+  var banner = document.getElementById('pendingBanner');
+  if (!banner) return;
+  var text = document.getElementById('pendingBannerText');
+  var list = getPendingScheduleDevices();
+  if (!list.length) {
+    banner.classList.remove('show');
+    if (text) text.innerHTML = '';
+    return;
+  }
+  var todayStr = fmtDate(new Date());
+  var urgent = list.filter(function (d) {
+    return !d.contract_start_date || d.contract_start_date <= todayStr;
+  }).length;
+  var html;
+  if (urgent > 0) {
+    html = '<strong>' + urgent + '</strong> 台设备合同已生效，但还没安排维保计划，<b>不会出现在维保日历里</b>';
+    if (list.length > urgent) html += '（另有 ' + (list.length - urgent) + ' 台合同未到生效日）';
+    html += '。';
+  } else {
+    html = '<strong>' + list.length + '</strong> 台新设备已备案/录入，合同尚未生效，记得按生效日安排首次维保。';
+  }
+  text.innerHTML = html;
+  banner.classList.add('show');
+}
+
+function openPendingSchedule() {
+  var body = document.getElementById('pendingBody');
+  if (!body) return;
+  var list = getPendingScheduleDevices();
+  var todayStr = fmtDate(new Date());
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6"><div class="pending-empty">🎉 所有设备都已安排维保计划，没有遗漏</div></td></tr>';
+    var tb0 = document.getElementById('pendingToolbar');
+    if (tb0) tb0.style.display = 'none';
+  } else {
+    var tb1 = document.getElementById('pendingToolbar');
+    if (tb1) tb1.style.display = 'flex';
+    body.innerHTML = list.map(function (d) {
+      var cs = d.contract_start_date || '';
+      var ce = d.contract_end_date || '';
+      var period = (cs || '?') + ' ~ ' + (ce || '?');
+      var state = (cs && cs > todayStr) ? '待生效' : '已生效';
+      return '<tr>' +
+        '<td class="col-chk"><input type="checkbox" class="pending-chk" data-code="' + _escPending(d.reg_code) + '" checked /></td>' +
+        '<td>' + _escPending(d.unit_name || '(未填单位)') + '</td>' +
+        '<td>' + _escPending(d.reg_code) + '</td>' +
+        '<td>' + _escPending(d.district || '-') + '</td>' +
+        '<td>' + _escPending(period) + '<br><span style="font-size:11px;color:#95a5a6">' + state + '</span></td>' +
+        '<td class="tag-none">未安排</td>' +
+        '</tr>';
+    }).join('');
+  }
+  var all = document.getElementById('pendingCheckAll');
+  if (all) all.checked = true;
+  var di = document.getElementById('pendingDate');
+  if (di && !di.value) di.value = todayStr;
+  document.getElementById('pendingOverlay').classList.add('show');
+}
+
+function closePendingSchedule() {
+  var ov = document.getElementById('pendingOverlay');
+  if (ov) ov.classList.remove('show');
+}
+
+function togglePendingAll(checked) {
+  document.querySelectorAll('#pendingBody .pending-chk').forEach(function (c) { c.checked = checked; });
+}
+
+/** mode: 'pick' 用所选日期 / 'contract' 按合同开始日 */
+function applyPendingSchedule(mode) {
+  var codes = Array.prototype.slice.call(
+    document.querySelectorAll('#pendingBody .pending-chk:checked')
+  ).map(function (c) { return c.dataset.code; });
+  if (!codes.length) {
+    showToast('请先勾选要排期的设备', 'warning');
+    return;
+  }
+  var todayStr = fmtDate(new Date());
+  var pick = '';
+  if (mode === 'pick') {
+    pick = (document.getElementById('pendingDate') || {}).value || '';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pick)) {
+      showToast('请先选择首次维保日期', 'warning');
+      return;
+    }
+  }
+  var changed = [];
+  codes.forEach(function (code) {
+    var d = DataManager.devices.find(function (x) { return x.reg_code === code; });
+    if (!d) return;
+    var target = pick;
+    if (mode === 'contract') {
+      var cs = d.contract_start_date || '';
+      target = (/^\d{4}-\d{2}-\d{2}$/.test(cs) && cs > todayStr) ? cs : todayStr;
+    }
+    d.next_date = target;
+    changed.push((d.unit_name || code) + '→' + target);
+  });
+  if (!changed.length) return;
+  DataManager.regenerateSchedule();
+  // 先写操作日志再保存，保证保存失败也留痕
+  OperationLog.add('安排维保计划', changed.length + '台', changed.join('; '));
+  DataManager.save();
+  renderStats();
+  renderDeviceTable();
+  openPendingSchedule();
+  showToast('已为 ' + changed.length + ' 台设备安排首次维保，维保日历已更新', 'success');
+}
