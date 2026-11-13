@@ -124,7 +124,8 @@ var SiteImporter = {
       for (var r = hi + 1; r < rows.length; r++) {
         var row = rows[r] || [];
         var code = String(row[colmap.reg_code] == null ? '' : row[colmap.reg_code]).trim();
-        if (!/^\d{12,22}$/.test(code)) continue;
+        // 注册代码可能含字母（如 3430130272026Q8029），不能只允许纯数字
+        if (!/^[0-9A-Za-z]{12,22}$/.test(code)) continue;
 
         var dev = { reg_code: code };
         Object.keys(colmap).forEach(function (field) {
