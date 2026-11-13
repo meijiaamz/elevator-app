@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>数据管理后台 - 顺安达电梯维保管理系统</title>
-  <link rel="stylesheet" href="css/style.css?v=20260918-v40">
+  <link rel="stylesheet" href="css/style.css?v=20261113-v46">
   <link rel="stylesheet" href="css/inspection.css?v=20260918-v41">
   <link rel="stylesheet" href="css/fault.css?v=20261113-v45">
 </head>
@@ -65,6 +65,13 @@
         </div>
       </div>
 
+      <!-- 待排期提醒：已备案但还没安排维保计划的设备 -->
+      <div class="pending-banner" id="pendingBanner">
+        <span class="pb-icon">⚠️</span>
+        <div class="pb-text" id="pendingBannerText"></div>
+        <button class="btn btn-warning" onclick="openPendingSchedule()">立即排期</button>
+      </div>
+
       <!-- Tab 导航 -->
       <div class="tab-nav">
         <button class="tab-btn active" data-tab="list">设备列表</button>
@@ -84,6 +91,7 @@
             <select id="tableDistrictFilter" onchange="filterTable()" style="padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;">
               <option value="">全部区域</option>
             </select>
+            <button class="btn btn-success btn-sm" onclick="openSiteImport()" title="以维保e站导出的设备表为准，批量新增/更正设备">📥 维保e站导入</button>
             <span style="margin-left:auto;color:#95a5a6;font-size:14px" id="tableCount"></span>
           </div>
           <div class="table-body">
@@ -408,6 +416,91 @@
     </div>
   </div>
 
+  <!-- 待排期设备弹窗 -->
+  <div class="modal-overlay" id="pendingOverlay" onclick="if(event.target===this)closePendingSchedule()">
+    <div class="modal-box pending-modal">
+      <div class="modal-header">
+        <h3 id="pendingModalTitle">已备案但未安排维保计划</h3>
+        <button class="modal-close" onclick="closePendingSchedule()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="pending-toolbar" id="pendingToolbar">
+          <label>首次维保日期
+            <input type="date" id="pendingDate" />
+          </label>
+          <button class="btn btn-primary btn-sm" onclick="applyPendingSchedule('pick')">选中项设为该日期</button>
+          <button class="btn btn-success btn-sm" onclick="applyPendingSchedule('contract')">按合同开始日自动排（选中项）</button>
+          <label style="margin-left:auto"><input type="checkbox" id="pendingCheckAll" onchange="togglePendingAll(this.checked)" /> 全选</label>
+        </div>
+        <div class="pending-table-wrap">
+          <table class="pending-table">
+            <thead>
+              <tr>
+                <th class="col-chk"></th>
+                <th>使用单位</th>
+                <th>注册代码</th>
+                <th style="width:70px">区域</th>
+                <th style="width:200px">维保合同期</th>
+                <th style="width:100px">下次维保</th>
+              </tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+        </div>
+        <div class="pending-tip">
+          这些设备已录入系统，但「下次维保日期」为空，因此<b>不会出现在维保日历里</b>——这就是漏排的原因。<br />
+          「按合同开始日自动排」= 首次维保取「合同开始日期」，若合同已开始则取今天。<br />
+          合同已过期的设备不会列在这里（属正常不再排期）。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 维保e站导入弹窗 -->
+  <div class="modal-overlay" id="siteImportOverlay" onclick="if(event.target===this)closeSiteImport()">
+    <div class="modal-box pending-modal">
+      <div class="modal-header">
+        <h3>从「维保e站」导入电梯数据</h3>
+        <button class="modal-close" onclick="closeSiteImport()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="pending-toolbar">
+          <label style="flex-wrap:wrap">选择导出文件（.xlsx / .xls）
+            <input type="file" id="siteFileInput" accept=".xlsx,.xls,.csv" onchange="onSiteFileSelected(event)"
+                   style="padding:6px 8px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;max-width:230px" />
+          </label>
+          <label style="margin-left:auto">
+            <input type="checkbox" id="siteUpdateExisting" checked /> 同时更正已有设备信息
+          </label>
+        </div>
+        <div id="siteImportSummary" class="pending-tip" style="font-size:13px;color:#54697c"></div>
+        <div class="pending-table-wrap" id="siteImportTableWrap" style="display:none;margin-top:10px">
+          <table class="pending-table">
+            <thead>
+              <tr>
+                <th style="width:56px">类型</th>
+                <th>使用单位</th>
+                <th>注册代码</th>
+                <th style="width:70px">区域</th>
+                <th style="width:190px">维保合同期</th>
+                <th style="width:110px">下次维保</th>
+              </tr>
+            </thead>
+            <tbody id="siteImportBody"></tbody>
+          </table>
+        </div>
+        <div class="pending-tip">
+          以「注册代码」去重。人工排的维保日期、已确认的年审日期、维保历史、经纬度<b>不会被覆盖</b>；<br />
+          新设备若没有维保日期，会自动按「合同开始日期」排首次维保（已过则取今天）——这就堵住了"备案后忘记排计划"的漏维保。
+        </div>
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary" id="siteImportConfirmBtn" style="display:none" onclick="confirmSiteImport()">确认导入</button>
+        <button class="btn btn-danger" onclick="closeSiteImport()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 故障报修表单弹窗 -->
   <div class="modal-overlay" id="faultModal" onclick="if(event.target===this)closeFaultModal()">
     <div class="modal-box" style="max-width:560px">
@@ -465,6 +558,7 @@
   <script src="js/fault.js?v=20261113-v45"></script>
   <script src="js/inspection.js?v=20260918-v41"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/admin.js?v=20261113-v45"></script>
+  <script src="js/admin.js?v=20261113-v46"></script>
+  <script src="js/importer.js?v=20261113-v46"></script>
 </body>
 </html>
