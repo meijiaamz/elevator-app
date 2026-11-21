@@ -97,6 +97,8 @@ async function initAdmin() {
       renderDeviceTable();
     };
     await DataManager.load();
+    // 维保e站每日数据体检横幅（独立报告 bin，异步加载，不阻塞主流程）
+    loadEsiteHealth();
     // 故障报修记录（独立云端 bin，失败不影响设备管理主流程）
     try {
       if (typeof FaultManager !== 'undefined') await FaultManager.load();
@@ -975,6 +977,181 @@ function clearOperationLog() {
   OperationLog.clear();
   renderLogTable();
   showToast('操作日志已清空', 'success');
+}
+
+// ===== 维保e站 每日数据体检提醒 =====
+// 数据源：tools/esite_healthcheck.py 每天自动导出后写入的独立报告 bin（public read）
+// 体检项：漏同步 / 未生成维保计划 / 未做设备分组 / 维保日历不同步
+const ESITE_HEALTH_BIN = '6b010981ffd5d16053d29a99';
+const HEALTH_LABELS = {
+  noPlan: '未生成维保计划',
+  noGroup: '未做设备分组',
+  missing: '漏同步（e站有 / 后台无）',
+  mismatch: '维保日历不同步'
+};
+const HEALTH_ORDER = ['noPlan', 'noGroup', 'missing', 'mismatch'];
+let _esiteHealth = null;
+
+function _escHealth(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+async function loadEsiteHealth() {
+  const banner = document.getElementById('healthBanner');
+  if (!banner) return;
+  const icon = document.getElementById('healthIcon');
+  const text = document.getElementById('healthBannerText');
+  if (text) text.innerHTML = '正在读取维保e站数据体检结果…';
+  try {
+    const resp = await fetch('https://api.jsonbin.io/v3/b/' + ESITE_HEALTH_BIN + '/latest?t=' + Date.now());
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const rec = (await resp.json()).record;
+    if (!rec || rec.kind !== 'esiteHealth') throw new Error('报告格式不符');
+    _esiteHealth = rec;
+    renderHealthBanner(rec);
+  } catch (e) {
+    banner.className = 'health-banner show stale';
+    if (icon) icon.textContent = '⚠️';
+    if (text) text.innerHTML = '维保e站体检结果读取失败（' + _escHealth(e.message) + '），请点「查看明细 → 重新读取」重试。';
+  }
+}
+
+function renderHealthBanner(r) {
+  const banner = document.getElementById('healthBanner');
+  const icon = document.getElementById('healthIcon');
+  const text = document.getElementById('healthBannerText');
+  if (!banner || !text || !r) return;
+  const c = r.counts || {};
+  const gen = r.generatedAt ? new Date(String(r.generatedAt).replace(' ', 'T')) : null;
+  const valid = gen && !isNaN(gen.getTime());
+  const ageH = valid ? (Date.now() - gen.getTime()) / 3600000 : null;
+  const stale = ageH !== null && ageH > 36;
+  const timeStr = valid
+    ? gen.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '时间未知';
+  const sub = ' · e站 ' + (c.esite != null ? c.esite : '?') + ' 台 / 后台 '
+    + (c.cloud != null ? c.cloud : '?') + ' 台 · 体检于 ' + timeStr;
+  const parts = [];
+  if (c.noPlan) parts.push('<strong>' + c.noPlan + '</strong> 台未生成维保计划');
+  if (c.noGroup) parts.push('<strong>' + c.noGroup + '</strong> 台未做设备分组');
+  if (c.missing) parts.push('<strong>' + c.missing + '</strong> 台漏同步');
+  if (c.mismatch) parts.push('<strong>' + c.mismatch + '</strong> 台日历不同步');
+
+  if (stale) {
+    banner.className = 'health-banner show stale';
+    if (icon) icon.textContent = '⏰';
+    text.innerHTML = '体检数据已超过 36 小时未更新（' + timeStr
+      + '），<b>每日自动导出可能没有运行</b>，请检查定时任务/电脑是否开机。'
+      + (parts.length ? '<br />上次结果：' + parts.join('、') : '')
+      + '<span class="hb-sub">' + sub + '</span>';
+    return;
+  }
+  if (parts.length) {
+    banner.className = 'health-banner show warn';
+    if (icon) icon.textContent = '⚠️';
+    text.innerHTML = parts.join('、') + '，需要今天处理。<span class="hb-sub">' + sub + '</span>';
+  } else {
+    banner.className = 'health-banner show';
+    if (icon) icon.textContent = '✅';
+    const p = r.platform || {};
+    text.innerHTML = '<span class="hb-ok">数据体检正常</span>：平台 '
+      + (p.groupDeviceCount != null ? p.groupDeviceCount : '?') + ' 台已分入「'
+      + _escHealth((p.groupNames || []).join('、') || '维保组') + '」，无维保计划 '
+      + (p.noPlanCount != null ? p.noPlanCount : '?') + ' 台，维保日历与 e站 同步。'
+      + '<span class="hb-sub">' + sub + '</span>';
+  }
+}
+
+function openHealthDetail() {
+  const wrap = document.getElementById('healthTableWrap');
+  const meta = document.getElementById('healthMeta');
+  const overlay = document.getElementById('healthOverlay');
+  if (!wrap || !overlay) return;
+  const r = _esiteHealth;
+  if (!r) {
+    if (meta) meta.textContent = '还没有读取到体检报告，请点「重新读取」。';
+    wrap.innerHTML = '';
+    overlay.classList.add('show');
+    return;
+  }
+  const c = r.counts || {};
+  const p = r.platform || {};
+  if (meta) {
+    meta.innerHTML = '生成时间：' + _escHealth(r.generatedAt || '?')
+      + ' ｜ e站 ' + (c.esite != null ? c.esite : '?') + ' 台 / 顺安达 '
+      + (c.cloud != null ? c.cloud : '?') + ' 台（可对上 ' + (c.matched != null ? c.matched : '?') + ' 台）'
+      + '<br />平台读数：分组设备 ' + (p.groupDeviceCount != null ? p.groupDeviceCount : '?')
+      + ' 台，无维保计划 ' + (p.noPlanCount != null ? p.noPlanCount : '?')
+      + ' 台，维保计划 ' + (p.planTotal != null ? p.planTotal : '?')
+      + ' 条，分组 ' + _escHealth((p.groupNames || []).join('、') || '?');
+  }
+  let rows = '';
+  HEALTH_ORDER.forEach(function (t) {
+    const list = (r.issues || []).filter(function (i) { return i.t === t; });
+    if (!list.length) return;
+    rows += '<tr><td colspan="4" style="background:#f5f8fb;font-weight:700;color:#2c3e50">'
+      + _escHealth(HEALTH_LABELS[t]) + '（' + list.length + ' 台）</td></tr>';
+    list.forEach(function (i) {
+      rows += '<tr>'
+        + '<td><span class="health-tag ' + (i.lv === 'high' ? 'high' : 'mid') + '">'
+        + (i.lv === 'high' ? '紧急' : '核对') + '</span></td>'
+        + '<td style="font-family:monospace;font-size:12px">' + _escHealth(i.c) + '</td>'
+        + '<td>' + _escHealth(i.u) + '</td>'
+        + '<td style="font-size:12px;color:#54697c">' + _escHealth(i.d) + '</td>'
+        + '</tr>';
+    });
+  });
+  if (!rows) rows = '<tr><td colspan="4"><div class="pending-empty">✅ 全部正常，无需处理</div></td></tr>';
+  wrap.innerHTML = '<table class="pending-table"><thead><tr>'
+    + '<th style="width:70px">级别</th><th style="width:205px">注册代码</th>'
+    + '<th style="width:220px">使用单位</th><th>说明</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  overlay.classList.add('show');
+}
+
+function closeHealthDetail() {
+  const o = document.getElementById('healthOverlay');
+  if (o) o.classList.remove('show');
+}
+
+function healthReportText() {
+  const r = _esiteHealth;
+  if (!r) return '';
+  const L = ['【维保e站 数据体检】' + (r.generatedAt || '')];
+  const c = r.counts || {};
+  L.push('e站 ' + (c.esite != null ? c.esite : '?') + ' 台 / 顺安达 ' + (c.cloud != null ? c.cloud : '?') + ' 台');
+  if (!(r.issues || []).length) L.push('✅ 全部正常：已生成计划、已分组、日历同步');
+  HEALTH_ORDER.forEach(function (t) {
+    const list = (r.issues || []).filter(function (i) { return i.t === t; });
+    if (!list.length) return;
+    L.push('');
+    L.push('■ ' + HEALTH_LABELS[t] + '：' + list.length + ' 台');
+    list.forEach(function (i) { L.push('  · ' + i.c + ' ' + (i.u || '') + ' — ' + (i.d || '')); });
+  });
+  return L.join('\n');
+}
+
+function copyHealthReport() {
+  const txt = healthReportText();
+  if (!txt) { if (typeof showToast === 'function') showToast('还没有体检报告', 'warning'); return; }
+  const done = function () { if (typeof showToast === 'function') showToast('报告已复制，可直接粘贴到微信群', 'success'); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done, function () { _fallbackHealthCopy(txt, done); });
+  } else {
+    _fallbackHealthCopy(txt, done);
+  }
+}
+
+function _fallbackHealthCopy(txt, done) {
+  const ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch (e) { if (typeof showToast === 'function') showToast('复制失败，请手动选择文本', 'error'); }
+  document.body.removeChild(ta);
 }
 
 // 启动
