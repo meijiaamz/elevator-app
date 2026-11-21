@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>数据管理后台 - 顺安达电梯维保管理系统</title>
-  <link rel="stylesheet" href="css/style.css?v=20261113-v46">
+  <link rel="stylesheet" href="css/style.css?v=20261121-v48">
   <link rel="stylesheet" href="css/inspection.css?v=20260918-v41">
   <link rel="stylesheet" href="css/fault.css?v=20261113-v45">
 </head>
@@ -70,6 +70,13 @@
         <span class="pb-icon">⚠️</span>
         <div class="pb-text" id="pendingBannerText"></div>
         <button class="btn btn-warning" onclick="openPendingSchedule()">立即排期</button>
+      </div>
+
+      <!-- 维保e站 每日数据体检提醒：漏同步 / 未生成计划 / 未分组 / 日历不同步 -->
+      <div class="health-banner" id="healthBanner">
+        <span class="hb-icon" id="healthIcon">🔍</span>
+        <div class="hb-text" id="healthBannerText">正在读取维保e站数据体检结果…</div>
+        <button class="btn btn-primary btn-sm" onclick="openHealthDetail()">查看明细</button>
       </div>
 
       <!-- Tab 导航 -->
@@ -456,6 +463,31 @@
     </div>
   </div>
 
+  <!-- 维保e站 数据体检明细弹窗 -->
+  <div class="modal-overlay" id="healthOverlay" onclick="if(event.target===this)closeHealthDetail()">
+    <div class="modal-box pending-modal">
+      <div class="modal-header">
+        <h3>维保e站 数据体检明细</h3>
+        <button class="modal-close" onclick="closeHealthDetail()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="healthMeta" class="pending-tip" style="font-size:13px;color:#54697c"></div>
+        <div class="pending-table-wrap" id="healthTableWrap" style="margin-top:10px"></div>
+        <div class="pending-tip">
+          <b>① 漏同步</b>：e站 已备案，但顺安达后台没有 → 在后台补录。<br />
+          <b>② 未生成维保计划 / ③ 未做设备分组</b>：都要在<b>维保e站</b>处理；未分组的设备，其他同事的账号看不到这台电梯。<br />
+          <b>④ 维保日历不同步</b>：两边「下次维保日期」相差不是 15 天整周期，先确认是哪边改了期，再决定以哪边为准。<br />
+          深圳市<b>定期检验与自行检测都需要特检院到场</b>，年审约检不区分两者。
+        </div>
+      </div>
+      <div class="share-actions">
+        <button class="btn btn-primary" onclick="copyHealthReport()">复制报告文本</button>
+        <button class="btn btn-warning" onclick="loadEsiteHealth()">重新读取</button>
+        <button class="btn btn-danger" onclick="closeHealthDetail()">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 维保e站导入弹窗 -->
   <div class="modal-overlay" id="siteImportOverlay" onclick="if(event.target===this)closeSiteImport()">
     <div class="modal-box pending-modal">
@@ -558,7 +590,7 @@
   <script src="js/fault.js?v=20261113-v45"></script>
   <script src="js/inspection.js?v=20260918-v41"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-  <script src="js/admin.js?v=20261113-v46"></script>
+  <script src="js/admin.js?v=20261121-v48"></script>
   <script src="js/importer.js?v=20261113-v47"></script>
 </body>
 </html>
