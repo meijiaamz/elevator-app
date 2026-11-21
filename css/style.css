@@ -1293,6 +1293,38 @@ a:hover { text-decoration: underline; }
 .pending-banner .pb-text strong { color: #c0392b; font-size: 17px; margin: 0 2px; }
 .pending-banner .btn { white-space: nowrap; }
 
+/* ===== 维保e站 每日数据体检横幅 ===== */
+.health-banner {
+  display: none;
+  margin-top: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: #f2faf5;
+  border: 1px solid #cfe6d5;
+  border-left: 5px solid #27ae60;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.health-banner.show { display: flex; }
+.health-banner .hb-icon { font-size: 20px; line-height: 1; }
+.health-banner .hb-text { flex: 1; min-width: 220px; font-size: 14px; line-height: 1.7; color: #2c6b45; }
+.health-banner .hb-text strong { color: #c0392b; font-size: 17px; margin: 0 2px; }
+.health-banner .hb-text .hb-ok { color: #1e8449; font-weight: 700; }
+.health-banner .hb-text .hb-sub { color: #6b7c89; font-size: 12px; margin-left: 8px; }
+.health-banner.warn {
+  background: #fff5f0; border-color: #f4c0a8; border-left-color: #e05a2b;
+}
+.health-banner.warn .hb-text { color: #8a3418; }
+.health-banner.stale {
+  background: #fff8e8; border-color: #f3c877; border-left-color: #e67e22;
+}
+.health-banner.stale .hb-text { color: #8a5a00; }
+.health-banner .btn { white-space: nowrap; }
+.health-tag { display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 12px; }
+.health-tag.high { background: #fde3dc; color: #c0392b; }
+.health-tag.mid { background: #fff0d6; color: #a06400; }
+
 .pending-modal { max-width: 940px; width: 94vw; }
 .pending-toolbar {
   display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
